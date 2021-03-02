@@ -1,0 +1,134 @@
+version: '3.2'
+volumes:
+  pgdata:
+networks:
+  airflow:
+
+services:
+  postgres:
+    image: postgres:9.6
+    container_name: postgres
+    hostname: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - airflow
+
+
+  redis:
+    container_name: redis
+    hostname: redis
+    image: redis:5.0.5
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - 6379:6379
+    networks:
+      - airflow
+
+  webserver:
+    container_name: webserver
+    hostname: webserver
+    build:
+      context: '.'
+      dockerfile: ./Dockerfile
+    env_file:
+      - .env
+    #    image: apache/airflow:2.0.0-python3.8
+    ports:
+      - 8080:8080
+    volumes:
+      - ../dags:/opt/airflow/dags
+    depends_on:
+      - postgres
+      - redis
+      - initdb
+    command: webserver
+    healthcheck:
+      test: [ "CMD-SHELL", "[ -f /opt/airflow/airflow-webserver.pid ]" ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    networks:
+      - airflow
+
+  #  flower:
+  #    hostname: flower
+  #    container_name: flower
+  #    image: apache/airflow:2.0.0-python3.8
+  #    env_file:
+  #      - .env
+  #    ports:
+  #      - 5555:5555
+  #    depends_on:
+  #      - redis
+  #    deploy:
+  #      restart_policy:
+  #        condition: on-failure
+  #        delay: 8s
+  #        max_attempts: 3
+  #    volumes:
+  #      - ./logs:/opt/airflow/logs
+  #    command: celery flower
+  #    networks:
+  #      - airflow
+
+  scheduler:
+    container_name: scheduler
+    hostname: scheduler
+    build:
+      context: '.'
+      dockerfile: ./Dockerfile
+    #    image: apache/airflow:2.0.0-python3.8
+    env_file:
+      - .env
+    volumes:
+      - ../dags:/opt/airflow/dags
+    command: scheduler
+    depends_on:
+      - postgres
+      - initdb
+      - webserver
+    networks:
+      - airflow
+
+  worker:
+    container_name: worker
+    hostname: worker
+    build:
+      context: '.'
+      dockerfile: ./Dockerfile
+    #    image: apache/airflow:2.0.0-python3.8
+    env_file:
+      - .env
+    volumes:
+      - ../dags:/opt/airflow/dags
+    command: celery worker
+    depends_on:
+      - scheduler
+    networks:
+      - airflow
+
+  initdb:
+    container_name: initdb
+    hostname: initdb
+    image: apache/airflow:2.0.0-python3.8
+    env_file:
+      - .env
+    volumes:
+      - ../dags:/opt/airflow/dags
+    entrypoint: /bin/bash
+    command: -c "airflow db init && airflow users create --firstname admin --lastname admin --email admin --password admin --username admin --role Admin"
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - airflow
