@@ -38,8 +38,8 @@ services:
     container_name: webserver
     hostname: webserver
     build:
-      context: '.'
-      dockerfile: ./Dockerfile
+      context: '..'
+      dockerfile: config/Dockerfile
     env_file:
       - .env
     #    image: apache/airflow:2.0.0-python3.8
@@ -85,8 +85,8 @@ services:
     container_name: scheduler
     hostname: scheduler
     build:
-      context: '.'
-      dockerfile: ./Dockerfile
+      context: '..'
+      dockerfile: config/Dockerfile
     #    image: apache/airflow:2.0.0-python3.8
     env_file:
       - .env
@@ -104,8 +104,8 @@ services:
     container_name: worker
     hostname: worker
     build:
-      context: '.'
-      dockerfile: ./Dockerfile
+      context: '..'
+      dockerfile: config/Dockerfile
     #    image: apache/airflow:2.0.0-python3.8
     env_file:
       - .env
