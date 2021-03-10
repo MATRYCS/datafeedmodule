@@ -126,3 +126,14 @@ def scale_cooling_demand_ratio(**kwargs):
     delete_unused_xcoms(task_id='encode_cooling_demand_label_op', key='cooling_demand_encoded_df')
     scaled_cooling_demand_df = scale_ratio(column='ratio', df=cooling_demand_encoded_df)
     print(scaled_cooling_demand_df)
+
+
+def encode_province_name(**kwargs):
+    """This function used to encode the province names"""
+    ti = kwargs['ti']
+    label_encoder = preprocessing.LabelEncoder()
+    ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
+    province_df = ph.get_pandas_df(hql="SELECT * FROM cassandra.matrycs.province")
+
+    province_df['province'] = label_encoder.fit_transform(province_df['province'])
+    print(province_df)
