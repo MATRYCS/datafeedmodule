@@ -87,6 +87,9 @@ def encode_label_heating_demand(**kwargs):
     ti = kwargs['ti']
     ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
     heating_demand_df = ph.get_pandas_df(hql="SELECT * FROM cassandra.matrycs.heating_demand")
+    heating_demand_df['label'] = heating_demand_df['label'].apply(
+        lambda label: 'unknown' if label in ['-', 'N.C.'] else label
+    )
     heating_demand_encoded_df = encoding_labels(df=heating_demand_df, column='label')
     ti.xcom_push(key='heating_demand_encoded_df', value=heating_demand_encoded_df.to_dict())
 
@@ -100,3 +103,26 @@ def scale_heating_demand_ratio(**kwargs):
     delete_unused_xcoms(task_id='encode_heating_demand_label_op', key='heating_demand_encoded_df')
     scaled_prim_cons_ratio = scale_ratio(column='ratio', df=heating_demand_encoded_df)
     print(scaled_prim_cons_ratio)
+
+
+def encode_label_cooling_demand(**kwargs):
+    """This function is for encoding cooling demand ratings"""
+    ti = kwargs['ti']
+    ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
+    cooling_demand_df = ph.get_pandas_df(hql="SELECT * FROM cassandra.matrycs.cooling_demand")
+    cooling_demand_df['label'] = cooling_demand_df['label'].apply(
+        lambda label: 'unknown' if label in ['-', 'N.C.'] else label
+    )
+    cooling_demand_encoded_df = encoding_labels(df=cooling_demand_df, column='label')
+    ti.xcom_push(key='cooling_demand_encoded_df', value=cooling_demand_encoded_df.to_dict())
+
+
+def scale_cooling_demand_ratio(**kwargs):
+    """This function is used to scale provided cooling demand ratio"""
+    ti = kwargs['ti']
+    cooling_demand_encoded_df = pd.DataFrame(
+        ti.xcom_pull(key='cooling_demand_encoded_df', task_ids='encode_cooling_demand_label_op')
+    )
+    delete_unused_xcoms(task_id='encode_cooling_demand_label_op', key='cooling_demand_encoded_df')
+    scaled_cooling_demand_df = scale_ratio(column='ratio', df=cooling_demand_encoded_df)
+    print(scaled_cooling_demand_df)

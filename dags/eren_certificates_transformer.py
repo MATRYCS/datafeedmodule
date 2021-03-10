@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from PythonProcessors.eren_certificates_processors import handle_dates, encode_building_usage, scale_coordinates, \
     process_labels, scale_co2_emissions_ratio, encode_label_primary_consumption, scale_prim_consumption_ratio, \
-    encode_label_heating_demand, scale_heating_demand_ratio
+    encode_label_heating_demand, scale_heating_demand_ratio, encode_label_cooling_demand, scale_cooling_demand_ratio
 
 default_args = {
     'start_date': datetime(2021, 3, 1)
@@ -41,11 +41,11 @@ with DAG('eren_certificates_transformer',
         cassandra_conn_id='matrycs_scylladb_conn',
         table='matrycs.heating_demand'
     )
-    # cooling_demand_sensor = CassandraTableSensor(
-    #     task_id='cooling_demand_sensor',
-    #     cassandra_conn_id='matrycs_scylladb_conn',
-    #     table='matrycs.cooling_demand'
-    # )
+    cooling_demand_sensor = CassandraTableSensor(
+        task_id='cooling_demand_sensor',
+        cassandra_conn_id='matrycs_scylladb_conn',
+        table='matrycs.cooling_demand'
+    )
     # province_sensor = CassandraTableSensor(
     #     task_id='province_sensor',
     #     cassandra_conn_id='matrycs_scylladb_conn',
@@ -97,7 +97,17 @@ with DAG('eren_certificates_transformer',
         python_callable=scale_heating_demand_ratio
     )
 
+    encode_cooling_demand_label_op = PythonOperator(
+        task_id='encode_cooling_demand_label_op',
+        python_callable=encode_label_cooling_demand
+    )
+    scale_cooling_demand_ratio_op = PythonOperator(
+        task_id='scale_cooling_demand_ratio_op',
+        python_callable=scale_cooling_demand_ratio
+    )
+
     buildings_sensor >> building_data_operator >> encode_building_usage_op >> scaling_coords
     co2_emissions_sensor >> encode_co2_emissions_labels >> scale_co2_emissions_ratio_op
     primary_consumption_sensor >> encode_primary_consumption_label_op >> scale_prim_consumption_ratio_op
     heating_demand_sensor >> encode_heating_demand_label_op >> scale_heating_demand_ratio_op
+    cooling_demand_sensor >> encode_cooling_demand_label_op >> scale_cooling_demand_ratio_op
