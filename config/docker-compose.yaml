@@ -47,6 +47,8 @@ services:
       - 8080:8080
     volumes:
       - ../dags:/opt/airflow/dags
+      - ../PythonProcessors:/opt/airflow/PythonProcessors
+      - ../utils.py:/opt/airflow/utils.py
     depends_on:
       - postgres
       - redis
@@ -92,6 +94,8 @@ services:
       - .env
     volumes:
       - ../dags:/opt/airflow/dags
+      - ../PythonProcessors:/opt/airflow/PythonProcessors
+      - ../utils.py:/opt/airflow/utils.py
     command: scheduler
     depends_on:
       - postgres
@@ -111,6 +115,8 @@ services:
       - .env
     volumes:
       - ../dags:/opt/airflow/dags
+      - ../PythonProcessors:/opt/airflow/PythonProcessors
+      - ../utils.py:/opt/airflow/utils.py
     command: celery worker
     depends_on:
       - scheduler
@@ -125,6 +131,8 @@ services:
       - .env
     volumes:
       - ../dags:/opt/airflow/dags
+      - ../PythonProcessors:/opt/airflow/PythonProcessors
+      - ../utils.py:/opt/airflow/utils.py
     entrypoint: /bin/bash
     command: -c "airflow db init && airflow users create --firstname admin --lastname admin --email admin --password admin --username admin --role Admin"
     depends_on:
