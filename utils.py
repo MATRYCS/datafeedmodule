@@ -1,5 +1,6 @@
 import psycopg2
 import pandas as pd
+from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -20,6 +21,15 @@ def delete_unused_xcoms(task_id, key):
     cur.close()
 
 
+def categorical_encoding(**kwargs):
+    """This function is used for label encoding"""
+    df = kwargs['df']
+    column = kwargs['column']
+    label_encoder = preprocessing.LabelEncoder()
+    df[column] = label_encoder.fit_transform(df[column])
+    return df
+
+
 def encoding_labels(**kwargs):
     """This function used for one hot encoding provided column for the provided pd.DataFrame"""
     df = kwargs['df']
@@ -35,4 +45,26 @@ def scale_ratio(**kwargs):
     column = kwargs['column']
     scaler = MinMaxScaler()
     df['{}_scaled'.format(column)] = scaler.fit_transform(df[[column]])
+    return df
+
+
+def map_months(**kwargs):
+    """This function is used to transform month to number"""
+    month_mapper = {
+        'January': 1,
+        'February': 2,
+        'March': 3,
+        'April': 4,
+        'May': 5,
+        'June': 6,
+        'July': 7,
+        'August': 8,
+        'September': 9,
+        'October': 10,
+        'November': 11,
+        'December': 12
+    }
+    df = kwargs['df']
+    column = kwargs['column']
+    df['{}_encoded'.format(column)] = df[column].apply(lambda row: month_mapper[row])
     return df
