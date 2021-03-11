@@ -80,3 +80,27 @@ def scale_vars_gas_consumption(**kwargs):
     scaled_gd_base_26 = scale_ratio(df=scaled_gd_base_20, column='gd_base_26')
     scale_monthly_gas_cons = scale_ratio(df=scaled_gd_base_26, column='monthly_gas_consumption')
     print(scale_monthly_gas_cons)
+
+
+def encode_diesel_consumption(**kwargs):
+    """This function is used to encode the monthly diesel consumption data"""
+    ti = kwargs['ti']
+    ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
+    diesel_consumption_df = ph.get_pandas_df("SELECT * FROM cassandra.matrycs.monthly_diesel_consumption")
+    month_encoded_diesel_cons = map_months(df=diesel_consumption_df, column='month')
+    ti.xcom_push(key='diesel_encoded_consumption_df', value=month_encoded_diesel_cons.to_dict())
+
+
+def scale_diesel_consumption_vars(**kwargs):
+    """This function is used to scale the diesel consumption numerical variables"""
+    ti = kwargs['ti']
+    diesel_encoded_consumption_df = pd.DataFrame(
+        ti.xcom_pull(key='diesel_encoded_consumption_df', task_ids='encode_diesel_consumption_op')
+    )
+    delete_unused_xcoms(task_id='encode_diesel_consumption_op', key='diesel_encoded_consumption_df')
+
+    scaled_gd_base_20 = scale_ratio(df=diesel_encoded_consumption_df, column='gd_base_20')
+    scaled_gd_base_26 = scale_ratio(df=scaled_gd_base_20, column='gd_base_26')
+    scaled_diesela_df = scale_ratio(df=scaled_gd_base_26, column='total_monthly_cons_diesela')
+    scaled_dieselc_df = scale_ratio(df=scaled_diesela_df, column='total_monthly_cons_dieselc')
+    scaled_dieselc_df['total_monthly_cons_dieselb'] = scaled_dieselc_df['total_monthly_cons_dieselb'].replace('NaN', 0)
