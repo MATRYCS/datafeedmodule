@@ -49,6 +49,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
     depends_on:
       - postgres
       - redis
@@ -96,6 +97,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
     command: scheduler
     depends_on:
       - postgres
@@ -117,6 +119,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
     command: celery worker
     depends_on:
       - scheduler
@@ -133,6 +136,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
     entrypoint: /bin/bash
     command: -c "airflow db init && airflow users create --firstname admin --lastname admin --email admin --password admin --username admin --role Admin"
     depends_on:

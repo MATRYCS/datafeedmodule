@@ -1,32 +1,45 @@
 from airflow.providers.presto.hooks.presto import PrestoHook
 import pandas as pd
+from cassandra import ConsistencyLevel
+from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
-from utils import delete_unused_xcoms, encoding_labels, scale_ratio
+from ScyllaDBClient.client import ScyllaClient
+from utils import delete_unused_xcoms, encoding_labels, scale_ratio, alter_scylladb_tables
 
 
 def handle_dates(**kwargs):
     """This function is used to handle registration date"""
     ti = kwargs['ti']
+
     ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
     building_df = ph.get_pandas_df(hql="SELECT * FROM cassandra.matrycs.building")
 
     building_df['registration_year'] = building_df['registration_date'].apply(lambda date: int(date.split('-')[0]))
     building_df['registration_month'] = building_df['registration_date'].apply(lambda date: int(date.split('-')[1]))
     building_df['registration_day'] = building_df['registration_date'].apply(lambda date: int(date.split('-')[2]))
+    new_columns = ['registration_year', 'registration_month', 'registration_day']
 
     ti.xcom_push(key='building_df', value=building_df.to_dict())
+    ti.xcom_push(key='new_columns', value=new_columns)
 
 
 def encode_building_usage(**kwargs):
     """This function used to encode the building usage"""
     ti = kwargs['ti']
     label_encoder = preprocessing.LabelEncoder()
+
     building_df = pd.DataFrame(ti.xcom_pull(key='building_df', task_ids='get_building_data'))
+    new_columns = ti.xcom_pull(key='new_columns', task_ids='get_building_data')
+
     delete_unused_xcoms(task_id='get_building_data', key='building_df')
+    delete_unused_xcoms(task_id='get_building_data', key='new_columns')
     building_df['building_use_encoded'] = label_encoder.fit_transform(building_df['building_use'])
+
+    new_columns.append('building_use_encoded')
     ti.xcom_push(key='building_df', value=building_df.to_dict())
+    ti.xcom_push(key='new_columns', value=new_columns)
 
 
 def scale_coordinates(**kwargs):
@@ -36,10 +49,61 @@ def scale_coordinates(**kwargs):
     building_df = pd.DataFrame(
         ti.xcom_pull(key='building_df', task_ids='encode_building_usage')
     )
+    new_columns = ti.xcom_pull(key='new_columns', task_ids='encode_building_usage')
+
     delete_unused_xcoms(task_id='encode_building_usage', key='building_df')
+    delete_unused_xcoms(task_id='encode_building_usage', key='new_columns')
+
     building_df['latitude_scaled'] = scaler.fit_transform(building_df[['latitude']])
     building_df['longitude_scaled'] = scaler.fit_transform(building_df[['longitude']])
-    print(building_df)
+
+    new_columns.extend(['latitude_scaled', 'longitude_scaled'])
+    ti.xcom_push(key='new_columns', value=new_columns)
+    ti.xcom_push(key='building_df', value=building_df.to_dict())
+
+
+def create_new_columns_buildings(**kwargs):
+    """This function is used to alter building table and add new columns to insert transformed data"""
+    ti = kwargs['ti']
+    scylla_client = ScyllaClient()
+
+    scylla_client.alter_table(table='building', column_name='registration_year', type='int')
+    scylla_client.alter_table(table='building', column_name='registration_month', type='int')
+    scylla_client.alter_table(table='building', column_name='registration_day', type='int')
+    scylla_client.alter_table(table='building', column_name='building_use_encoded', type='int')
+    scylla_client.alter_table(table='building', column_name='latitude_scaled', type='float')
+    scylla_client.alter_table(table='building', column_name='longitude_scaled', type='float')
+    new_columns = ti.xcom_pull(key='new_columns', task_ids='scaling_coords')
+    delete_unused_xcoms(key='new_columns', task_id='scaling_coords')
+
+
+def insert_transformed_building_data(**kwargs):
+    """This function is used for inserting transformed data"""
+    ti = kwargs['ti']
+    scylla_client = ScyllaClient()
+    building_df = pd.DataFrame(
+        ti.xcom_pull(key='building_df', task_ids='scaling_coords')
+    )
+    for index, item in building_df.iterrows():
+        sql_command = """
+            UPDATE building
+            SET registration_year = {registration_year},
+            registration_month = {registration_month},
+            registration_day = {registration_day},
+            building_use_encoded = {building_use_encoded},
+            latitude_scaled = {latitude_scaled},
+            longitude_scaled = {longitude_scaled}
+            WHERE registration_number = '{registration_number}'
+        """.format(
+            registration_year=item['registration_year'],
+            registration_month=item['registration_month'],
+            registration_day=item['registration_day'],
+            building_use_encoded=item['building_use_encoded'],
+            latitude_scaled=item['latitude_scaled'],
+            longitude_scaled=item['longitude_scaled'],
+            registration_number=item['registration_number']
+        )
+        scylla_client.update_table(sql_command=sql_command)
 
 
 def process_labels(**kwargs):

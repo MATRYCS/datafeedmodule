@@ -1,5 +1,7 @@
 import psycopg2
 import pandas as pd
+from cassandra import ConsistencyLevel
+from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT, Cluster
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
@@ -68,3 +70,23 @@ def map_months(**kwargs):
     column = kwargs['column']
     df['{}_encoded'.format(column)] = df[column].apply(lambda row: month_mapper[row])
     return df
+
+
+def alter_scylladb_tables(**kwargs):
+    """This function is used for altering tables in Matrycs ScyllaDB"""
+    table = kwargs['table']
+    column_name = kwargs['column_name']
+    type = kwargs['type']
+    try:
+        exec_profile = ExecutionProfile(
+            consistency_level=ConsistencyLevel.LOCAL_QUORUM,
+            serial_consistency_level=ConsistencyLevel.LOCAL_SERIAL,
+            request_timeout=90)
+        cluster = Cluster(['matrycs.epu.ntua.gr'], port=9042, execution_profiles={EXEC_PROFILE_DEFAULT: exec_profile})
+        session = cluster.connect()
+        session.set_keyspace("matrycs")
+        session.execute(
+            "ALTER TABLE {table} ADD {column_name} {type} ".format(table=table, column_name=column_name, type=type)
+        )
+    except Exception as ex:
+        print(ex)
