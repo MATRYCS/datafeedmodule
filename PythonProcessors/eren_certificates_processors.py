@@ -2,23 +2,29 @@ from airflow.providers.presto.hooks.presto import PrestoHook
 import pandas as pd
 from cassandra import ConsistencyLevel
 from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT
+from cassandra.cqlengine.query import BatchQuery
+from cassandra.query import BatchStatement
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
 from ScyllaDBClient.client import ScyllaClient
-from utils import delete_unused_xcoms, encoding_labels, scale_ratio, alter_scylladb_tables
+from models.EREN.models import Building
+from utils import delete_unused_xcoms, encoding_labels, scale_ratio, alter_scylladb_tables, split_to_partitions, \
+    load_energy_certificates, fill_na_energy_certificates, init_scylla_conn
 
 
 def handle_dates(**kwargs):
     """This function is used to handle registration date"""
     ti = kwargs['ti']
 
-    ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
-    building_df = ph.get_pandas_df(hql="SELECT * FROM cassandra.matrycs.building")
+    # ph = PrestoHook(presto_conn_id='matrycs_presto_conn')
+    # building_df = ph.get_pandas_df(hql="SELECT * FROM cassandra.matrycs.building")
+    building_df = load_energy_certificates()
+    building_df = fill_na_energy_certificates(building_df)
 
-    building_df['registration_year'] = building_df['registration_date'].apply(lambda date: int(date.split('-')[0]))
-    building_df['registration_month'] = building_df['registration_date'].apply(lambda date: int(date.split('-')[1]))
-    building_df['registration_day'] = building_df['registration_date'].apply(lambda date: int(date.split('-')[2]))
+    building_df['registration_year'] = building_df['Registration date'].apply(lambda date: int(date.split('-')[0]))
+    building_df['registration_month'] = building_df['Registration date'].apply(lambda date: int(date.split('-')[1]))
+    building_df['registration_day'] = building_df['Registration date'].apply(lambda date: int(date.split('-')[2]))
     new_columns = ['registration_year', 'registration_month', 'registration_day']
 
     ti.xcom_push(key='building_df', value=building_df.to_dict())
@@ -35,7 +41,7 @@ def encode_building_usage(**kwargs):
 
     delete_unused_xcoms(task_id='get_building_data', key='building_df')
     delete_unused_xcoms(task_id='get_building_data', key='new_columns')
-    building_df['building_use_encoded'] = label_encoder.fit_transform(building_df['building_use'])
+    building_df['building_use_encoded'] = label_encoder.fit_transform(building_df['Building use'])
 
     new_columns.append('building_use_encoded')
     ti.xcom_push(key='building_df', value=building_df.to_dict())
@@ -80,30 +86,35 @@ def create_new_columns_buildings(**kwargs):
 def insert_transformed_building_data(**kwargs):
     """This function is used for inserting transformed data"""
     ti = kwargs['ti']
-    scylla_client = ScyllaClient()
     building_df = pd.DataFrame(
         ti.xcom_pull(key='building_df', task_ids='scaling_coords')
     )
-    for index, item in building_df.iterrows():
-        sql_command = """
-            UPDATE building
-            SET registration_year = {registration_year},
-            registration_month = {registration_month},
-            registration_day = {registration_day},
-            building_use_encoded = {building_use_encoded},
-            latitude_scaled = {latitude_scaled},
-            longitude_scaled = {longitude_scaled}
-            WHERE registration_number = '{registration_number}'
-        """.format(
-            registration_year=item['registration_year'],
-            registration_month=item['registration_month'],
-            registration_day=item['registration_day'],
-            building_use_encoded=item['building_use_encoded'],
-            latitude_scaled=item['latitude_scaled'],
-            longitude_scaled=item['longitude_scaled'],
-            registration_number=item['registration_number']
-        )
-        scylla_client.update_table(sql_command=sql_command)
+    partitioned_energy_cert_data = split_to_partitions(building_df, 10000)
+
+    # init cassandra connection
+    init_scylla_conn()
+
+    # Upload Batch data to ScyllaDB
+    num_of_partitions = 0
+    for partition in partitioned_energy_cert_data:
+        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 10000))
+        with BatchQuery() as b:
+            for index, item in partition.iterrows():
+                Building.batch(b).create(
+                    registration_number=item['Registration number'],
+                    registration_date=item['Registration date'],
+                    registration_year=item['registration_year'],
+                    registration_month=item['registration_month'],
+                    registration_day=item['registration_day'],
+                    building_use=item['Building use'],
+                    building_use_encoded=item['building_use_encoded'],
+                    direction=item['Direction'],
+                    longitude=item['longitude'],
+                    longitude_scaled=item['longitude_scaled'],
+                    latitude=item['latitude'],
+                    latitude_scaled=item['latitude_scaled']
+                )
+        num_of_partitions += 1
 
 
 def process_labels(**kwargs):

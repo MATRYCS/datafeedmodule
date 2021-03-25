@@ -1,9 +1,16 @@
 import psycopg2
 import pandas as pd
+import numpy as np
 from cassandra import ConsistencyLevel
 from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT, Cluster
+from cassandra.cqlengine import management, connection
+from cassandra.cqlengine.management import sync_table
+
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
+
+from models.EREN.models import Building
+from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE
 
 
 def delete_unused_xcoms(task_id, key):
@@ -90,3 +97,74 @@ def alter_scylladb_tables(**kwargs):
         )
     except Exception as ex:
         print(ex)
+
+
+def split_to_partitions(df, partition_number):
+    """This function is used to split to partitions the provided dataFrame
+    Args:
+        df: provided dataframe
+        partition_number: number of partitions
+    Returns:
+        list of pandas dataframes
+    """
+    permuted_indices = np.random.permutation(len(df))
+    partitions = []
+    for i in range(partition_number):
+        partitions.append(df.iloc[permuted_indices[i::partition_number]])
+    return partitions
+
+
+def load_energy_certificates():
+    """
+    This function is used to load energy efficiency certificates from path source
+
+    Args:
+        path: provided path
+
+    Returns: energy efficiency pandas dataFrame
+
+    """
+    energy_cert_data = pd.read_csv(
+        ENERGY_EFFICIENCY_CERTS_PATH,
+        sep=';',
+        dtype={'primary consumption ratio': 'float',
+               'CO2 emissions ratio': 'float',
+               'Cooling demand ratio': 'float',
+               'Heating demand ratio': 'float'
+               })
+    return energy_cert_data
+
+
+def fill_na_energy_certificates(certificates_df):
+    """
+    This function is used to fill NaN values in Energy certificates DF
+    :param certificates_df: provided energy certificates pd.DataFrame
+    :return: transformed dataFrame
+    """
+    certificates_df['primary consumption ratio'] = certificates_df['primary consumption ratio'].fillna(0)
+    certificates_df['Primary energy label'] = certificates_df['Primary energy label'].fillna('unknown')
+    certificates_df['CO2 emissions ratio'] = certificates_df['CO2 emissions ratio'].fillna(0)
+    certificates_df['Heating demand ratio'] = certificates_df['Heating demand ratio'].fillna(0)
+    certificates_df['Heating demand rating'] = certificates_df['Heating demand rating'].fillna('unknown')
+    certificates_df['Cooling demand ratio'] = certificates_df['Cooling demand ratio'].fillna(0)
+    certificates_df['Cooling demand rating'] = certificates_df['Cooling demand ratio.1'].fillna('unknown')
+    return certificates_df
+
+
+def init_scylla_conn():
+    """
+    This function is used for initializing ScyllaDB connection
+    """
+    exec_profile = ExecutionProfile(request_timeout=90)
+    profiles = {'node1': exec_profile}
+    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=60)
+    session = cluster.connect()
+    connection.register_connection(CONNECTION_NAME, session=session)
+
+    management.create_keyspace_simple(
+        KEY_SPACE,
+        connections=[CONNECTION_NAME],
+        replication_factor=3
+    )
+
+    sync_table(Building)

@@ -5,8 +5,10 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.apache.cassandra.sensors.table import CassandraTableSensor
+from airflow.sensors.filesystem import FileSensor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from settings import ENERGY_EFFICIENCY_CERTS_PATH
 
 from PythonProcessors.eren_certificates_processors import handle_dates, encode_building_usage, scale_coordinates, \
     process_labels, scale_co2_emissions_ratio, encode_label_primary_consumption, scale_prim_consumption_ratio, \
@@ -22,11 +24,16 @@ with DAG('eren_certificates_transformer',
          default_args=default_args,
          catchup=False
          ) as dag:
-    buildings_sensor = CassandraTableSensor(
-        task_id='building_sensor',
-        cassandra_conn_id='matrycs_scylladb_conn',
-        table='matrycs.building'
+    certificates_sensor_op = FileSensor(
+        task_id='certificates_sensor',
+        poke_interval=30,
+        filepath=ENERGY_EFFICIENCY_CERTS_PATH
     )
+    # buildings_sensor = CassandraTableSensor(
+    #     task_id='building_sensor',
+    #     cassandra_conn_id='matrycs_scylladb_conn',
+    #     table='matrycs.building'
+    # )
     # co2_emissions_sensor = CassandraTableSensor(
     #     task_id='co2_emissions_sensor',
     #     cassandra_conn_id='matrycs_scylladb_conn',
@@ -70,11 +77,11 @@ with DAG('eren_certificates_transformer',
         task_id='scaling_coords',
         python_callable=scale_coordinates
     )
-    create_new_columns_buildings_op = PythonOperator(
-        task_id='create_new_columns_buildings_op',
-        python_callable=create_new_columns_buildings
-    )
-    insert_transformed_data_op = PythonOperator(
+    # create_new_columns_buildings_op = PythonOperator(
+    #     task_id='create_new_columns_buildings_op',
+    #     python_callable=create_new_columns_buildings
+    # )
+    insert_transformed_building_data_op = PythonOperator(
         task_id='insert_transformed_data_op',
         python_callable=insert_transformed_building_data
     )
@@ -119,7 +126,7 @@ with DAG('eren_certificates_transformer',
     #     python_callable=encode_province_name
     # )
 
-    buildings_sensor >> building_data_operator >> encode_building_usage_op >> scaling_coords >> create_new_columns_buildings_op >> insert_transformed_data_op
+    certificates_sensor_op >> building_data_operator >> encode_building_usage_op >> scaling_coords >> insert_transformed_building_data_op
     # co2_emissions_sensor >> encode_co2_emissions_labels >> scale_co2_emissions_ratio_op
     # primary_consumption_sensor >> encode_primary_consumption_label_op >> scale_prim_consumption_ratio_op
     # heating_demand_sensor >> encode_heating_demand_label_op >> scale_heating_demand_ratio_op

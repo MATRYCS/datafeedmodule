@@ -7,7 +7,7 @@ class ScyllaClient(object):
 
     def __init__(self):
         self.exec_profile = ExecutionProfile(
-            consistency_level=ConsistencyLevel.LOCAL_QUORUM,
+            consistency_level=ConsistencyLevel.LOCAL_ONE,
             serial_consistency_level=ConsistencyLevel.LOCAL_SERIAL,
             request_timeout=90
         )
@@ -34,4 +34,5 @@ class ScyllaClient(object):
     def update_table(self, **kwargs):
         """This function is used to update information in cassandra tables"""
         sql_command = kwargs['sql_command']
-        self.session.execute(sql_command)
+        self.session.execute_async(sql_command)
+
