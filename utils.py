@@ -10,7 +10,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
 from models.EREN.models import Building
-from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE
+from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE, PALMELA_HOURLY_PRODUCTION
 
 
 def delete_unused_xcoms(task_id, key):
@@ -151,13 +151,22 @@ def fill_na_energy_certificates(certificates_df):
     return certificates_df
 
 
+def read_palmela_hourly_production():
+    """
+    This function is used for loading Coopernico's Palmela Hourly Production
+    :return: pd.DataFrame
+    """
+    palmela_hourly_df = pd.read_csv(PALMELA_HOURLY_PRODUCTION, parse_dates=['Data'])
+    return palmela_hourly_df
+
+
 def init_scylla_conn():
     """
     This function is used for initializing ScyllaDB connection
     """
-    exec_profile = ExecutionProfile(request_timeout=90)
+    exec_profile = ExecutionProfile(request_timeout=6000)
     profiles = {'node1': exec_profile}
-    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=60)
+    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=6000)
     session = cluster.connect()
     connection.register_connection(CONNECTION_NAME, session=session)
 
@@ -167,4 +176,4 @@ def init_scylla_conn():
         replication_factor=3
     )
 
-    sync_table(Building)
+    # sync_table(Building)
