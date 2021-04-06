@@ -12,3 +12,8 @@ ENERGY_EFFICIENCY_CERTS_PATH = os.path.join(PROJECT_FOLDER, 'data/EREN/certifica
 PALMELA_HOURLY_PRODUCTION = os.path.join(
     PROJECT_FOLDER, 'data/Coopernico/27 Adega Palmela-Horario-2020-02-02-2021-03-10.csv'
 )
+
+# BTC Tower DATASET SPECIFICS
+BTC_TOWER_DATASET = os.path.join(
+    PROJECT_FOLDER, 'data/BTC/BTC tower.xlsx'
+)
