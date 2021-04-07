@@ -3,3 +3,5 @@ RUN pip install --no-cache-dir --user apache-airflow-providers-apache-cassandra
 RUN pip install --no-cache-dir --user apache-airflow-providers-presto
 RUN pip install --no-cache-dir --user scikit-learn
 RUN pip install --no-cache-dir --user cassandra-driver
+RUN pip install --no-cache-dir --user xlrd
+RUN pip install --no-cache-dir --user openpyxl

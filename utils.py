@@ -5,6 +5,7 @@ from cassandra import ConsistencyLevel
 from cassandra.cluster import ExecutionProfile, EXEC_PROFILE_DEFAULT, Cluster
 from cassandra.cqlengine import management, connection
 from cassandra.cqlengine.management import sync_table
+from cassandra.policies import RetryPolicy
 
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
@@ -164,9 +165,10 @@ def init_scylla_conn():
     """
     This function is used for initializing ScyllaDB connection
     """
-    exec_profile = ExecutionProfile(request_timeout=6000)
+    exec_profile = ExecutionProfile(request_timeout=9000)
     profiles = {'node1': exec_profile}
-    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=6000)
+    policy = RetryPolicy()
+    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=9000)
     session = cluster.connect()
     connection.register_connection(CONNECTION_NAME, session=session)
 
