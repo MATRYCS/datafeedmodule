@@ -11,7 +11,8 @@ from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
 from models.EREN.models import Building
-from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE, PALMELA_HOURLY_PRODUCTION
+from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE, PALMELA_HOURLY_PRODUCTION, \
+    LEIF_KPFI_DATASET
 
 
 def delete_unused_xcoms(task_id, key):
@@ -179,3 +180,21 @@ def init_scylla_conn():
     )
 
     # sync_table(Building)
+
+
+def load_leif_data(sheet_name, date_columns=None):
+    """This function is used to load LEIF projects"""
+    if date_columns:
+        leif_projects = pd.read_excel(
+            LEIF_KPFI_DATASET,
+            engine='openpyxl',
+            sheet_name=sheet_name,
+            parse_dates=date_columns
+        )
+    else:
+        leif_projects = pd.read_excel(
+            LEIF_KPFI_DATASET,
+            engine='openpyxl',
+            sheet_name=sheet_name
+        )
+    return leif_projects

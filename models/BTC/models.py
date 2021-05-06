@@ -9,9 +9,9 @@ class BtcTower(Model):
     __keyspace__ = KEY_SPACE
     __connection__ = CONNECTION_NAME
 
-    Timestamp = Text(primary_key=True)
-    Year = Integer()
-    Month = Integer()
+    Timestamp = Text()
+    Year = Integer(primary_key=True)
+    Month = Integer(primary_key=True)
     Day = Integer()
     Hour = Integer()
     Location = Text()

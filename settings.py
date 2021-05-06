@@ -17,3 +17,8 @@ PALMELA_HOURLY_PRODUCTION = os.path.join(
 BTC_TOWER_DATASET = os.path.join(
     PROJECT_FOLDER, 'data/BTC/BTC tower.xlsx'
 )
+
+# LEIF DATASET SPECIFICS
+LEIF_KPFI_DATASET = os.path.join(
+    PROJECT_FOLDER, 'data/LEIF/Data_KPFI.LV - DATA.xlsx'
+)
