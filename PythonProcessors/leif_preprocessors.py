@@ -3,7 +3,8 @@ from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 
-from models.LEIF.models import LeifProject, LeifActivity
+from models.LEIF.models import LeifProject, LeifActivity, LeifBuilding, LeifBeforeProjectAvg, ReportingYearData, \
+    TotalAfterProject
 from utils import load_leif_data, delete_unused_xcoms, load_leif_data_spec, process_leif_data, split_to_partitions, \
     init_scylla_conn
 
@@ -58,35 +59,35 @@ def store_leif_projects(**kwargs):
     )
     delete_unused_xcoms(task_id='scale_leif_project_num_op', key='kpfi_project_df')
 
-    # partitioned_palmela_data = split_to_partitions(kpfi_project_df, 100)
-    # init_scylla_conn()
-    # sync_table(LeifProject)
-    #
-    # # Upload Batch data to ScyllaDB
-    # num_of_partitions = 0
-    # for partition in partitioned_palmela_data:
-    #     print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100))
-    #     with BatchQuery() as b:
-    #         for index, item in partition.iterrows():
-    #             LeifProject.batch(b).create(
-    #                 project_no=item['Project No.'],
-    #                 project_co2_reduction=item['Project CO2 reduction'],
-    #                 start_date=item['Start date of the project'],
-    #                 end_date=item['End date of the project'],
-    #                 total_project_costs=item['Total project costs'],
-    #                 total_project_costs_scaled=item['Total project costs scaled'],
-    #                 grant_financing=item['Grant financing'],
-    #                 grant_financing_scaled=item['Grant financing scaled'],
-    #                 start_year=item['start Year'],
-    #                 start_month=item['start Month'],
-    #                 start_day=item['start Day'],
-    #                 start_hour=item['start Hour'],
-    #                 end_year=item['end Year'],
-    #                 end_month=item['end Month'],
-    #                 end_day=item['end Day'],
-    #                 end_hour=item['end Hour'],
-    #             )
-    #     num_of_partitions += 1
+    partitioned_palmela_data = split_to_partitions(kpfi_project_df, 100)
+    init_scylla_conn()
+    sync_table(LeifProject)
+
+    # Upload Batch data to ScyllaDB
+    num_of_partitions = 0
+    for partition in partitioned_palmela_data:
+        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100))
+        with BatchQuery() as b:
+            for index, item in partition.iterrows():
+                LeifProject.batch(b).create(
+                    project_no=item['Project No.'],
+                    project_co2_reduction=item['Project CO2 reduction'],
+                    start_date=item['Start date of the project'],
+                    end_date=item['End date of the project'],
+                    total_project_costs=item['Total project costs'],
+                    total_project_costs_scaled=item['Total project costs scaled'],
+                    grant_financing=item['Grant financing'],
+                    grant_financing_scaled=item['Grant financing scaled'],
+                    start_year=item['start Year'],
+                    start_month=item['start Month'],
+                    start_day=item['start Day'],
+                    start_hour=item['start Hour'],
+                    end_year=item['end Year'],
+                    end_month=item['end Month'],
+                    end_day=item['end Day'],
+                    end_hour=item['end Hour'],
+                )
+        num_of_partitions += 1
 
 
 def scale_kpfi_activities(**kwargs):
@@ -207,3 +208,99 @@ def scale_kpfi_data(**kwargs):
         ]]
     )
     ti.xcom_push(key='leif_data', value=processed_leif_data.to_dict())
+
+
+def store_leif_data(**kwargs):
+    """This function is used to store leif data from KPFI"""
+    ti = kwargs['ti']
+    leif_data = pd.DataFrame(ti.xcom_pull(
+        key='leif_data',
+        task_ids='scale_leif_data_op')
+    )
+    delete_unused_xcoms(task_id='scale_leif_data_op', key='leif_data')
+    print(leif_data.columns)
+
+    partitioned_leif_data = split_to_partitions(leif_data, 300)
+    init_scylla_conn()
+
+    sync_table(LeifBuilding)
+    sync_table(LeifBeforeProjectAvg)
+    sync_table(ReportingYearData)
+    sync_table(TotalAfterProject)
+
+    # Upload Batch data to ScyllaDB
+    num_of_partitions = 0
+    for partition in partitioned_leif_data:
+        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 300))
+        with BatchQuery() as b:
+            for index, item in partition.iterrows():
+                LeifBuilding.batch(b).create(
+                    house_nr=item['house_id'],
+                    year_of_building=item['Year of building'],
+                    number_of_floors=item['Number of floors'],
+                    total_heating_area=item['Total heating area'],
+                    total_heating_area_scaled=item['Total heating area scaled'],
+                    house_functions=item['House functions'],
+                    heating_source_of_heat=item['House Constants Heating Source of heat'],
+                    heating_co2_emission_factor=item['House Constants Heating CO2 Emission factor'],
+                    heating_co2_emission_factor_scaled=item['House Constants Heating CO2 Emission factor scaled'],
+                    heating_co2_emission_factor_audit=item['House Constants Heating CO2 Emission factor (audit)'],
+                    heating_co2_emission_factor_audit_scaled=item['House Constants Heating CO2 Emission factor (audit) scaled'],
+                    hot_water_source_of_heat=item['House Constants Hot Water Source of heat'],
+                    hot_water_co2_emission_factor=item['House Constants Hot water CO2 Emission factor'],
+                    hot_water_co2_emission_factor_scaled=item['House Constants Hot water CO2 Emission factor scaled'],
+                    electricity_co2_emission_factor=item['House Constants Electricity CO2 Emission factor'],
+                    electricity_co2_emission_factor_scaled=item['House Constants Electricity CO2 Emission factor scaled'],
+                )
+                LeifBeforeProjectAvg.batch(b).create(
+                    house_nr=item['house_id'],
+                    project_no=item['Project No.'],
+                    heating_total_consumption=item['Heating avg data before project Total energy consumption'],
+                    heating_total_consumption_scaled=item['Heating avg data before project Total energy consumption scaled'],
+                    heating_co2_emission=item['Heating avg data before project CO2 emission'],
+                    heating_co2_emission_scaled=item['Heating avg data before project CO2 emission scaled'],
+                    hot_water_total_consumption=item['Hot Water avg data before project Total energy consumption'],
+                    hot_water_total_consumption_scaled=item['Hot Water avg data before project Total energy consumption scaled'],
+                    hot_water_co2_emission=item['Hot Water avg data before project CO2 emission'],
+                    hot_water_co2_emission_scaled=item['Hot Water avg data before project CO2 emission scaled'],
+                    electricity_total_consumption=item['Electricity avg data before project Total energy consumption'],
+                    electricity_total_consumption_scaled=item['Electricity avg data before project Total energy consumption scaled'],
+                    electricity_co2_emission=item['Electricity avg data before project CO2 emission'],
+                    electricity_co2_emission_scaled=item['Electricity avg data before project CO2 emission scaled'],
+                )
+                ReportingYearData.batch(b).create(
+                    house_nr=item['house_id'],
+                    project_no=item['Project No.'],
+                    heating_total_consumption=item['Heating Reporting Year data Total energy consumption'],
+                    heating_total_consumption_scaled=item['Heating Reporting Year data Total energy consumption scaled'],
+                    heating_co2_emission=item['Heating Reporting Year CO2 emission'],
+                    heating_co2_emission_scaled=item['Heating Reporting Year CO2 emission scaled'],
+                    hot_water_total_consumption=item['Hot Water Reporting Year data Total energy consumption'],
+                    hot_water_total_consumption_scaled=item['Hot Water Reporting Year data Total energy consumption scaled'],
+                    hot_water_co2_emission=item['Hot Water Reporting Year data CO2 emission'],
+                    hot_water_co2_emission_scaled=item['Hot Water Reporting Year data CO2 emission scaled'],
+                    electricity_total_consumption=item['Electricity Reporting Year data Total energy consumption'],
+                    electricity_total_consumption_scaled=item['Electricity Reporting Year data Total energy consumption scaled'],
+                    electricity_co2_emission=item['Electricity Reporting Year data CO2 emission'],
+                    electricity_co2_emission_scaled=item['Electricity Reporting Year data CO2 emission scaled'],
+                    renewable_energy_produced_energy=item['Renewable Energy Produced energy'],
+                    renewable_energy_produced_energy_scaled=item['Renewable Energy Produced energy scaled'],
+                    renewable_energy_co2_emission=item['Renewable Energy CO2 emission'],
+                    renewable_energy_co2_emission_scaled=item['Renewable Energy CO2 emission scaled']
+                )
+                TotalAfterProject.batch(b).create(
+                    house_nr=item['house_id'],
+                    project_no=item['Project No.'],
+                    total_energy_consumption_mwh=item['TOTALS Total Energy Consumption MWh'],
+                    total_energy_consumption_mwh_scaled=item['TOTALS Total Energy Consumption MWh scaled'],
+                    total_energy_consumption_kwh_m2=item['TOTALS Total Energy Consumption kWh/m2'],
+                    total_energy_consumption_kwh_m2_scaled=item['TOTALS Total Energy Consumption kWh/m2 scaled'],
+                    co2_emission=item['TOTALS Building CO2 emission in reporting year, tCO2 gadā'],
+                    co2_emission_scaled=item['TOTALS Building CO2 emission in reporting year, tCO2 gadā scaled'],
+                    co2_emission_reduction=item['TOTALS Building CO2 emission reduction in reporting year, tCO2 gadā'],
+                    co2_emission_reduction_scaled=item['TOTALS Building CO2 emission reduction in reporting year, tCO2 gadā scaled']
+                )
+        num_of_partitions += 1
+
+
+
