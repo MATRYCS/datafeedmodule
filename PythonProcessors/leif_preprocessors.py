@@ -3,7 +3,7 @@ from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 
-from models.LEIF.models import LeifProject
+from models.LEIF.models import LeifProject, LeifActivity
 from utils import load_leif_data, delete_unused_xcoms, load_leif_data_spec, process_leif_data, split_to_partitions, \
     init_scylla_conn
 
@@ -56,38 +56,37 @@ def store_leif_projects(**kwargs):
         key='kpfi_project_df',
         task_ids='scale_leif_project_num_op')
     )
-    print(kpfi_project_df)
-    print(kpfi_project_df.columns)
+    delete_unused_xcoms(task_id='scale_leif_project_num_op', key='kpfi_project_df')
 
-    partitioned_palmela_data = split_to_partitions(kpfi_project_df, 100)
-    init_scylla_conn()
-    sync_table(LeifProject)
-
-    # Upload Batch data to ScyllaDB
-    num_of_partitions = 0
-    for partition in partitioned_palmela_data:
-        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100))
-        with BatchQuery() as b:
-            for index, item in partition.iterrows():
-                LeifProject.batch(b).create(
-                    project_no=item['Project No.'],
-                    project_co2_reduction=item['Project CO2 reduction'],
-                    start_date=item['Start date of the project'],
-                    end_date=item['End date of the project'],
-                    total_project_costs=item['Total project costs'],
-                    total_project_costs_scaled=item['Total project costs scaled'],
-                    grant_financing=item['Grant financing'],
-                    grant_financing_scaled=item['Grant financing scaled'],
-                    start_year=item['start Year'],
-                    start_month=item['start Month'],
-                    start_day=item['start Day'],
-                    start_hour=item['start Hour'],
-                    end_year=item['end Year'],
-                    end_month=item['end Month'],
-                    end_day=item['end Day'],
-                    end_hour=item['end Hour'],
-                )
-        num_of_partitions += 1
+    # partitioned_palmela_data = split_to_partitions(kpfi_project_df, 100)
+    # init_scylla_conn()
+    # sync_table(LeifProject)
+    #
+    # # Upload Batch data to ScyllaDB
+    # num_of_partitions = 0
+    # for partition in partitioned_palmela_data:
+    #     print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100))
+    #     with BatchQuery() as b:
+    #         for index, item in partition.iterrows():
+    #             LeifProject.batch(b).create(
+    #                 project_no=item['Project No.'],
+    #                 project_co2_reduction=item['Project CO2 reduction'],
+    #                 start_date=item['Start date of the project'],
+    #                 end_date=item['End date of the project'],
+    #                 total_project_costs=item['Total project costs'],
+    #                 total_project_costs_scaled=item['Total project costs scaled'],
+    #                 grant_financing=item['Grant financing'],
+    #                 grant_financing_scaled=item['Grant financing scaled'],
+    #                 start_year=item['start Year'],
+    #                 start_month=item['start Month'],
+    #                 start_day=item['start Day'],
+    #                 start_hour=item['start Hour'],
+    #                 end_year=item['end Year'],
+    #                 end_month=item['end Month'],
+    #                 end_day=item['end Day'],
+    #                 end_hour=item['end Hour'],
+    #             )
+    #     num_of_partitions += 1
 
 
 def scale_kpfi_activities(**kwargs):
@@ -100,7 +99,44 @@ def scale_kpfi_activities(**kwargs):
         ['CO2 reduction scaled', 'Energy reduction scaled', 'CO2 emission factor scaled']] = scaler.fit_transform(
         leif_activities[['CO2 reduction', 'Energy reduction', 'CO2 emission factor']]
     )
+    leif_activities = leif_activities.dropna()
     ti.xcom_push(key='leif_activities', value=leif_activities.to_dict())
+
+
+def store_leif_activities(**kwargs):
+    """This function is used to store leif activities"""
+    ti = kwargs['ti']
+    leif_activities = pd.DataFrame(ti.xcom_pull(
+        key='leif_activities',
+        task_ids='scale_leif_kpfi_activities_op')
+    )
+    delete_unused_xcoms(task_id='scale_leif_kpfi_activities_op', key='leif_activities')
+    print(leif_activities)
+    print(leif_activities.columns)
+
+    partitioned_leif_activities = split_to_partitions(leif_activities, 100)
+    init_scylla_conn()
+    sync_table(LeifActivity)
+
+    # Upload Batch data to ScyllaDB
+    num_of_partitions = 0
+    for partition in partitioned_leif_activities:
+        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100))
+        with BatchQuery() as b:
+            for index, item in partition.iterrows():
+                LeifActivity.batch(b).create(
+                    project_no=item['Project No.'],
+                    project_activity=item['Project activity/building'],
+                    type_of_activity=item['Type of activity'],
+                    type_of_building=item['Type of building'],
+                    co2_reduction=item['CO2 reduction'],
+                    co2_reduction_scaled=item['CO2 reduction scaled'],
+                    energy_reduction=item['Energy reduction'],
+                    energy_reduction_scaled=item['Energy reduction scaled'],
+                    co2_emission_factor=item['CO2 emission factor'],
+                    co2_emission_factor_scaled=item['CO2 emission factor scaled']
+                )
+        num_of_partitions += 1
 
 
 def scale_kpfi_data(**kwargs):

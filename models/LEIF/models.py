@@ -25,3 +25,20 @@ class LeifProject(Model):
     end_month = Integer()
     end_day = Integer()
     end_hour = Integer()
+
+
+class LeifActivity(Model):
+    __table_name__ = 'leif_activity'
+    __keyspace__ = KEY_SPACE
+    __connection__ = CONNECTION_NAME
+
+    project_no = Text(primary_key=True)
+    project_activity = Text(primary_key=True)
+    type_of_activity = Text(primary_key=True, clustering_order='DESC')
+    type_of_building = Text(primary_key=True, clustering_order='DESC')
+    co2_reduction = Float()
+    co2_reduction_scaled = Float()
+    energy_reduction = Float()
+    energy_reduction_scaled = Float()
+    co2_emission_factor = Float()
+    co2_emission_factor_scaled = Float()
