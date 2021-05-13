@@ -1,3 +1,5 @@
+import re
+
 import psycopg2
 import pandas as pd
 import numpy as np
@@ -12,7 +14,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from models.EREN.models import Building
 from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE, PALMELA_HOURLY_PRODUCTION, \
-    LEIF_KPFI_DATASET
+    LEIF_KPFI_DATASET, LEIF_DATA_COLUMNS
 
 
 def delete_unused_xcoms(task_id, key):
@@ -198,3 +200,70 @@ def load_leif_data(sheet_name, date_columns=None):
             sheet_name=sheet_name
         )
     return leif_projects
+
+
+def load_leif_data_spec():
+    """This function is used for loading LEIF data"""
+    leif_data = pd.read_excel(
+        LEIF_KPFI_DATASET,
+        engine='openpyxl',
+        header=None,
+        skiprows=1,
+        sheet_name='DATA'
+    )
+    leif_data = leif_data.rename(columns=LEIF_DATA_COLUMNS)
+    return leif_data
+
+
+def handle_number_of_floors(row):
+    """This function is used to handle number of floors"""
+    if row == 'n/d' or row == 'n.i.':
+        row = int(row.replace(row, '0'))
+
+    if isinstance(row, str):
+        digits = [int(s) for s in row.split() if s.isdigit()]
+        if digits:
+            row = max(digits)
+        else:
+            row = 0
+    return row
+
+
+def extract_year(url):
+    """This function is used to extract year from text"""
+    return re.findall(r'(\d{4})', url)
+
+
+def handle_building_year(row):
+    """This function is used to handle building years"""
+    if row == 'n/d' or row == 'n.i.':
+        row = int(row.replace(row, '0'))
+    if row == '60-70tie gadi':
+        row = 1970
+    if isinstance(row, str):
+        list_of_years = extract_year(row)
+        if len(list_of_years) > 1:
+            row = list_of_years[1]
+        elif len(list_of_years) == 1:
+            row = list_of_years[0]
+        else:
+            row = 0
+    return row
+
+
+def process_leif_data(leif_df):
+    """This function is used to transform leif data DF"""
+    leif_df['Renewable Energy Produced energy'] = leif_df['Renewable Energy Produced energy'].fillna(0.0)
+    leif_df['Renewable Energy CO2 emission'] = leif_df['Renewable Energy CO2 emission'].fillna(0.0)
+    leif_df['House Constants Hot Water Source of heat'] = leif_df[
+        'House Constants Hot Water Source of heat'].fillna('n/a')
+    leif_df['House Constants Heating Source of heat'] = leif_df[
+        'House Constants Heating Source of heat'].fillna('n/a')
+
+    leif_df['Number of floors'] = leif_df['Number of floors'].apply(handle_number_of_floors)
+    leif_df['Number of floors'] = leif_df['Number of floors'].fillna(0)
+
+    leif_df['Year of building'] = leif_df['Year of building'].fillna(0)
+    leif_df['Year of building'] = leif_df['Year of building'].apply(handle_building_year).astype('int')
+    leif_df['house_id'] = leif_df.index
+    return leif_df

@@ -58,8 +58,9 @@ def scale_numerical_vars(**kwargs):
         task_ids='handle_null_values')
     )
     delete_unused_xcoms(task_id='handle_null_values', key='palmela_hourly_production')
-    palmela_hourly_production[['Avoided CO2', 'Produced', 'Specific']] = scaler.fit_transform(
+    palmela_hourly_production[['Avoided CO2', 'Produced_scaled', 'Specific']] = scaler.fit_transform(
         palmela_hourly_production[['Avoided CO2', 'Produced', 'Specific']])
+    palmela_hourly_production = palmela_hourly_production.drop_duplicates()
 
     ti.xcom_push(key='palmela_hourly_production', value=palmela_hourly_production.to_dict())
 
@@ -95,6 +96,7 @@ def store_palmela_hourly_data(**kwargs):
                     Day=item['Day'],
                     Hour=item['Hour'],
                     Produced=item['Produced'],
+                    Produced_scaled=item['Produced_scaled'],
                     Specific=item['Specific'],
                     AvoidedCO2=item['Avoided CO2']
                 )

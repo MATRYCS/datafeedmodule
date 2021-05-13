@@ -15,5 +15,6 @@ class PalmelaHourlyProduction(Model):
     Day = Integer()
     Hour = Integer()
     Produced = Float()
+    Produced_scaled = Float()
     Specific = Float()
     AvoidedCO2 = Float()
