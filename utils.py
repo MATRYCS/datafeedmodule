@@ -168,10 +168,13 @@ def init_scylla_conn():
     """
     This function is used for initializing ScyllaDB connection
     """
-    exec_profile = ExecutionProfile(request_timeout=9000)
+    exec_profile = ExecutionProfile(
+        request_timeout=100000,
+        consistency_level=ConsistencyLevel.LOCAL_ONE,
+        serial_consistency_level=ConsistencyLevel.LOCAL_SERIAL,
+    )
     profiles = {'node1': exec_profile}
-    policy = RetryPolicy()
-    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=9000)
+    cluster = Cluster(["matrycs.epu.ntua.gr"], execution_profiles=profiles, connect_timeout=100000)
     session = cluster.connect()
     connection.register_connection(CONNECTION_NAME, session=session)
 
