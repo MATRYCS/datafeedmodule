@@ -11,8 +11,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
 from ScyllaDBClient.client import ScyllaClient
-from models.EREN.models import Building, BuildingCo2Emission, BuildingPrimaryConsumption, BuildingHeatingDemand, \
-    BuildingCoolingDemand
+from models.EREN.models import Building
 from utils import delete_unused_xcoms, encoding_labels, scale_ratio, alter_scylladb_tables, split_to_partitions, \
     load_energy_certificates, fill_na_energy_certificates, init_scylla_conn
 
@@ -182,24 +181,23 @@ def insert_transformed_building_data(**kwargs):
     building_df = pd.DataFrame(
         ti.xcom_pull(key='building_df', task_ids='scale_cooling_demand_ratio_op')
     )
-    partitioned_energy_cert_data = split_to_partitions(building_df, 100000)
+    partitioned_energy_cert_data = split_to_partitions(building_df, 200000)
 
     # init cassandra connection
     init_scylla_conn()
-
     sync_table(Building)
-    sync_table(BuildingCo2Emission)
-    sync_table(BuildingPrimaryConsumption)
-    sync_table(BuildingHeatingDemand)
-    sync_table(BuildingCoolingDemand)
+    # sync_table(BuildingCo2Emission)
+    # sync_table(BuildingPrimaryConsumption)
+    # sync_table(BuildingHeatingDemand)
+    # sync_table(BuildingCoolingDemand)
 
     # Upload Batch data to ScyllaDB
     num_of_partitions = 0
     for partition in partitioned_energy_cert_data:
-        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100000))
+        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 200000))
         for index, item in partition.iterrows():
             with BatchQuery() as b:
-                Building.batch(b).create(
+                Building.batch(b).bind(
                     registration_number=item['Registration number'],
                     registration_date=item['Registration date'],
                     registration_year=item['registration_year'],
@@ -214,39 +212,55 @@ def insert_transformed_building_data(**kwargs):
                     longitude=item['longitude'],
                     longitude_scaled=item['longitude_scaled'],
                     latitude=item['latitude'],
-                    latitude_scaled=item['latitude_scaled']
-                )
-            with BatchQuery() as c:
-                BuildingCo2Emission.batch(c).create(
-                    registration_number=item['Registration number'],
+                    latitude_scaled=item['latitude_scaled'],
                     co2_emission_rating=item['CO2 emitions Rating'],
                     co2_emission_rating_encoded=item['CO2 emitions Rating encoded'],
                     co2_emission_ratio=item['CO2 emissions ratio'],
                     co2_emission_ratio_scaled=item['CO2 emissions ratio_scaled'],
-                )
-
-            with BatchQuery() as d:
-                BuildingPrimaryConsumption.batch(d).create(
-                    registration_number=item['Registration number'],
                     primary_energy_rating=item['Primary energy label'],
                     primary_energy_rating_encoded=item['Primary energy label encoded'],
                     primary_energy_ratio=item['primary consumption ratio'],
                     primary_energy_ratio_scaled=item['primary consumption ratio_scaled'],
-                )
-            with BatchQuery() as e:
-                BuildingHeatingDemand.batch(e).create(
-                    registration_number=item['Registration number'],
                     heating_demand_rating=item['Heating demand rating'],
                     heating_demand_rating_encoded=item['Heating demand rating encoded'],
                     heating_demand_ratio=item['Heating demand ratio'],
                     heating_demand_ratio_scaled=item['Heating demand ratio_scaled'],
-                )
-            with BatchQuery() as f:
-                BuildingCoolingDemand.batch(f).create(
-                    registration_number=item['Registration number'],
                     cooling_demand_rating=item['Cooling demand ratio.1'],
                     cooling_demand_rating_encoded=item['Cooling demand ratio.1 encoded'],
                     cooling_demand_ratio=item['Cooling demand ratio'],
                     cooling_demand_ratio_scaled=item['Cooling demand ratio_scaled']
                 )
+            # with BatchQuery() as c:
+            #     BuildingCo2Emission.batch(c).create(
+            #         registration_number=item['Registration number'],
+            #         co2_emission_rating=item['CO2 emitions Rating'],
+            #         co2_emission_rating_encoded=item['CO2 emitions Rating encoded'],
+            #         co2_emission_ratio=item['CO2 emissions ratio'],
+            #         co2_emission_ratio_scaled=item['CO2 emissions ratio_scaled'],
+            #     )
+            #
+            # with BatchQuery() as d:
+            #     BuildingPrimaryConsumption.batch(d).create(
+            #         registration_number=item['Registration number'],
+            #         primary_energy_rating=item['Primary energy label'],
+            #         primary_energy_rating_encoded=item['Primary energy label encoded'],
+            #         primary_energy_ratio=item['primary consumption ratio'],
+            #         primary_energy_ratio_scaled=item['primary consumption ratio_scaled'],
+            #     )
+            # with BatchQuery() as e:
+            #     BuildingHeatingDemand.batch(e).create(
+            #         registration_number=item['Registration number'],
+            #         heating_demand_rating=item['Heating demand rating'],
+            #         heating_demand_rating_encoded=item['Heating demand rating encoded'],
+            #         heating_demand_ratio=item['Heating demand ratio'],
+            #         heating_demand_ratio_scaled=item['Heating demand ratio_scaled'],
+            #     )
+            # with BatchQuery() as f:
+            #     BuildingCoolingDemand.batch(f).create(
+            #         registration_number=item['Registration number'],
+            #         cooling_demand_rating=item['Cooling demand ratio.1'],
+            #         cooling_demand_rating_encoded=item['Cooling demand ratio.1 encoded'],
+            #         cooling_demand_ratio=item['Cooling demand ratio'],
+            #         cooling_demand_ratio_scaled=item['Cooling demand ratio_scaled']
+            #     )
         num_of_partitions += 1

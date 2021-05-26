@@ -12,7 +12,6 @@ from cassandra.policies import RetryPolicy
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
-from models.EREN.models import Building
 from settings import ENERGY_EFFICIENCY_CERTS_PATH, CONNECTION_NAME, KEY_SPACE, PALMELA_HOURLY_PRODUCTION, \
     LEIF_KPFI_DATASET, LEIF_DATA_COLUMNS
 
@@ -183,7 +182,6 @@ def init_scylla_conn():
         connections=[CONNECTION_NAME],
         replication_factor=3
     )
-
     # sync_table(Building)
 
 
