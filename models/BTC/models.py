@@ -10,10 +10,11 @@ class BtcTower(Model):
     __connection__ = CONNECTION_NAME
 
     Timestamp = Text()
-    Year = Integer(primary_key=True)
-    Month = Integer(primary_key=True)
-    Day = Integer()
-    Hour = Integer()
+    btc_id = Text(primary_key=True)
+    Year = Integer(primary_key=True, clustering_order='DESC')
+    Month = Integer(primary_key=True, clustering_order='DESC')
+    Day = Integer(primary_key=True, clustering_order='DESC')
+    Hour = Integer(primary_key=True, clustering_order='DESC')
     Location = Text()
     energy_source = Text()
     measure = Text()

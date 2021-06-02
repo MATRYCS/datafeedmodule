@@ -88,6 +88,7 @@ def insert_btc_data(**kwargs):
         with BatchQuery() as b:
             for index, item in partition.iterrows():
                 BtcTower.batch(b).create(
+                    btc_id="btc_tower",
                     Timestamp=item['TIMESTAMP'],
                     Year=item['Year'],
                     Month=item['Month'],
