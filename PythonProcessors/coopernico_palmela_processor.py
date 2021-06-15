@@ -77,7 +77,16 @@ def store_palmela_hourly_data(**kwargs):
     palmela_hourly_production = pd.DataFrame(ti.xcom_pull(
         key='palmela_hourly_production',
         task_ids='scale_numerical_variables')
-    )
+    ).rename(columns={
+        'Date': 'timestamp',
+        'Year': 'year',
+        'Month': 'month',
+        'Day': 'day',
+        'Hour': 'hour',
+        'Produced': 'produced',
+        'Produced_scaled': 'produced_scaled',
+        'Avoided CO2': 'avoided_co2'
+    })
     delete_unused_xcoms(task_id='scale_numerical_variables', key='palmela_hourly_production')
 
     mongo_client = MongoDBClient()

@@ -75,7 +75,19 @@ def insert_btc_data(**kwargs):
     btc_tower_df = pd.DataFrame(ti.xcom_pull(
         key='btc_tower_df',
         task_ids='scale_numerical_vars')
-    )
+    ).rename(columns={
+        'TIMESTAMP': 'timestamp',
+        'Year': 'year',
+        'Month': 'month',
+        'Day': 'Day',
+        'Hour': 'hour',
+        'LOCATION': 'location',
+        'ENERGY_SOURCE': 'energy_source',
+        'INTERVAL': 'interval',
+        'VALUE': 'value',
+        'UNIT_OF_MEASURE': 'unit_of_measure',
+        'MEASURE': 'measure'
+    })
     delete_unused_xcoms(task_id='scale_numerical_vars', key='btc_tower_df')
     mongo_client = MongoDBClient()
     collection_ = mongo_client.create_collection('btc_tower')

@@ -174,7 +174,45 @@ def insert_transformed_building_data(**kwargs):
     ti = kwargs['ti']
     building_df = pd.DataFrame(
         ti.xcom_pull(key='building_df', task_ids='scale_cooling_demand_ratio_op')
-    )
+    ).rename(columns={
+        'Registration number': 'registration_number',
+        'Registration date': 'registration_date',
+        'registration_year': 'registration_year',
+        'registration_month': 'registration_month',
+        'registration_day': 'registration_day',
+        'Province': 'province',
+        'Province_encoded':'province_encoded',
+        'Municipality': 'municipality',
+        'Building use': 'building_use',
+        'building_use_encoded': 'building_use_encoded',
+        'Direction': 'direction',
+        'longitude': 'longitude',
+        'latitude': 'latitude',
+        'longitude_scaled': 'longitude_scaled',
+        'CO2 emitions Rating': 'co2_emissions_rating',
+        'CO2 emitions Rating encoded': 'co2_emission_rating_encoded',
+        'CO2 emissions ratio': 'co2_emission_ratio',
+        'CO2 emissions ratio_scaled': 'co2_emissions_ratio_scaled',
+        'Primary energy label': 'primary_energy_rating',
+        'Primary energy label encoded': 'primary_energy_rating_encoded',
+        'primary consumption ratio':'primary_energy_ratio',
+        'primary consumption ratio_scaled': 'primary_energy_ratio_scaled',
+        'Heating demand rating': 'heating_demand_rating',
+        'Heating demand rating encoded': 'heating_demand_rating_encoded',
+        'Heating demand ratio': 'heating_demand_ratio',
+        'Heating demand ratio_scaled': 'heating_demand_ratio_scaled',
+        'Cooling demand rating': 'cooling_demand_rating',
+        'Cooling demand rating encoded': 'cooling_demand_rating_encoded',
+        'Cooling demand ratio': 'cooling_demand_ratio',
+        'Cooling demand ratio_scaled': 'cooling_demand_ratio_scaled'
+    })[[
+        'registration_number', 'registration_date', 'registration_year','registration_month',
+        'registration_day', 'province', 'province_encoded', 'municipality', 'building_use',
+        'building_use_encoded', 'direction', 'longitude','latitude','longitude_scaled', 'latitude_scaled',
+        'co2_emissions_rating', 'co2_emission_rating_encoded', 'co2_emission_ratio', 'co2_emissions_ratio_scaled',
+        'primary_energy_rating', 'primary_energy_rating_encoded', 'primary_energy_ratio', 'primary_energy_ratio_scaled',
+        'cooling_demand_rating', 'cooling_demand_rating_encoded', 'cooling_demand_ratio','cooling_demand_ratio_scaled'
+    ]]
     mongo_client = MongoDBClient()
     collection_ = mongo_client.create_collection('eren_building')
 

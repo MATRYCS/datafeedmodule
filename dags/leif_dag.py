@@ -27,7 +27,7 @@ with DAG('leif_kpfi_dag',
         poke_interval=30,
         filepath=LEIF_KPFI_DATASET
     )
-    # Handle Leif Projects
+    # # Handle Leif Projects
     handle_leif_project_dates = PythonOperator(
         task_id='handle_project_dates_op',
         python_callable=handle_dates_kpfi_projects
@@ -49,7 +49,7 @@ with DAG('leif_kpfi_dag',
         task_id='store_leif_activities_op',
         python_callable=store_leif_activities
     )
-    # Handle Leif Data
+    # # Handle Leif Data
     scaled_leif_data = PythonOperator(
         task_id='scale_leif_data_op',
         python_callable=scale_kpfi_data

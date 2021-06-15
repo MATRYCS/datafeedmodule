@@ -14,4 +14,5 @@ class MongoDBClient(object):
 
     def insert_many_(self, df, collection):
         df = df.to_dict('records')
+        print(df)
         collection.insert_many(df)
