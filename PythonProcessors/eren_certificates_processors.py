@@ -1,17 +1,9 @@
-from time import sleep
 
-from airflow.providers.presto.hooks.presto import PrestoHook
 import pandas as pd
-from cassandra import ConsistencyLevel
-from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT
-from cassandra.cqlengine.management import sync_table
-from cassandra.cqlengine.query import BatchQuery
-from cassandra.query import BatchStatement
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
-from ScyllaDBClient.client import ScyllaClient
-from models.EREN.models import Building
+from MongoDBClient.client import MongoDBClient
 from utils import delete_unused_xcoms, encoding_labels, scale_ratio, alter_scylladb_tables, split_to_partitions, \
     load_energy_certificates, fill_na_energy_certificates, init_scylla_conn
 
@@ -26,7 +18,9 @@ def handle_dates(**kwargs):
     building_df['registration_year'] = building_df['Registration date'].apply(lambda date: int(date.split('-')[0]))
     building_df['registration_month'] = building_df['Registration date'].apply(lambda date: int(date.split('-')[1]))
     building_df['registration_day'] = building_df['Registration date'].apply(lambda date: int(date.split('-')[2]))
+    building_df = building_df.drop('Cooling demand rating', 1)
 
+    building_df.rename(columns={'Cooling demand ratio.1': 'Cooling demand rating'}, inplace=True)
     ti.xcom_push(key='building_df', value=building_df.to_dict())
 
 
@@ -152,13 +146,13 @@ def encode_label_cooling_demand(**kwargs):
         ti.xcom_pull(key='building_df', task_ids='scale_heating_demand_ratio_op')
     )
     delete_unused_xcoms(task_id='scale_heating_demand_ratio_op', key='building_df')
-    building_df['Cooling demand ratio.1'] = building_df['Cooling demand ratio.1'].fillna('unknown')
+    building_df['Cooling demand rating'] = building_df['Cooling demand rating'].fillna('unknown')
 
-    building_df['Cooling demand ratio.1'] = building_df['Cooling demand ratio.1'].apply(
+    building_df['Cooling demand rating'] = building_df['Cooling demand rating'].apply(
         lambda label: 'unknown' if label in ['-', 'N.C.', 'nan'] else label
     )
-    building_df['Cooling demand ratio.1 encoded'] = cooling_demand_label_enc.fit_transform(
-        building_df['Cooling demand ratio.1']
+    building_df['Cooling demand rating encoded'] = cooling_demand_label_enc.fit_transform(
+        building_df['Cooling demand rating']
     )
     ti.xcom_push(key='building_df', value=building_df.to_dict())
 
@@ -181,86 +175,10 @@ def insert_transformed_building_data(**kwargs):
     building_df = pd.DataFrame(
         ti.xcom_pull(key='building_df', task_ids='scale_cooling_demand_ratio_op')
     )
-    partitioned_energy_cert_data = split_to_partitions(building_df, 200000)
+    mongo_client = MongoDBClient()
+    collection_ = mongo_client.create_collection('eren_building')
 
-    # init cassandra connection
-    init_scylla_conn()
-    sync_table(Building)
-    # sync_table(BuildingCo2Emission)
-    # sync_table(BuildingPrimaryConsumption)
-    # sync_table(BuildingHeatingDemand)
-    # sync_table(BuildingCoolingDemand)
-
-    # Upload Batch data to ScyllaDB
-    num_of_partitions = 0
-    for partition in partitioned_energy_cert_data:
-        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 200000))
-        for index, item in partition.iterrows():
-            with BatchQuery() as b:
-                Building.batch(b).bind(
-                    registration_number=item['Registration number'],
-                    registration_date=item['Registration date'],
-                    registration_year=item['registration_year'],
-                    registration_month=item['registration_month'],
-                    registration_day=item['registration_day'],
-                    province=item['Province'],
-                    province_encoded=item['Province_encoded'],
-                    municipality=item['Municipality'],
-                    building_use=item['Building use'],
-                    building_use_encoded=item['building_use_encoded'],
-                    direction=item['Direction'],
-                    longitude=item['longitude'],
-                    longitude_scaled=item['longitude_scaled'],
-                    latitude=item['latitude'],
-                    latitude_scaled=item['latitude_scaled'],
-                    co2_emission_rating=item['CO2 emitions Rating'],
-                    co2_emission_rating_encoded=item['CO2 emitions Rating encoded'],
-                    co2_emission_ratio=item['CO2 emissions ratio'],
-                    co2_emission_ratio_scaled=item['CO2 emissions ratio_scaled'],
-                    primary_energy_rating=item['Primary energy label'],
-                    primary_energy_rating_encoded=item['Primary energy label encoded'],
-                    primary_energy_ratio=item['primary consumption ratio'],
-                    primary_energy_ratio_scaled=item['primary consumption ratio_scaled'],
-                    heating_demand_rating=item['Heating demand rating'],
-                    heating_demand_rating_encoded=item['Heating demand rating encoded'],
-                    heating_demand_ratio=item['Heating demand ratio'],
-                    heating_demand_ratio_scaled=item['Heating demand ratio_scaled'],
-                    cooling_demand_rating=item['Cooling demand ratio.1'],
-                    cooling_demand_rating_encoded=item['Cooling demand ratio.1 encoded'],
-                    cooling_demand_ratio=item['Cooling demand ratio'],
-                    cooling_demand_ratio_scaled=item['Cooling demand ratio_scaled']
-                )
-            # with BatchQuery() as c:
-            #     BuildingCo2Emission.batch(c).create(
-            #         registration_number=item['Registration number'],
-            #         co2_emission_rating=item['CO2 emitions Rating'],
-            #         co2_emission_rating_encoded=item['CO2 emitions Rating encoded'],
-            #         co2_emission_ratio=item['CO2 emissions ratio'],
-            #         co2_emission_ratio_scaled=item['CO2 emissions ratio_scaled'],
-            #     )
-            #
-            # with BatchQuery() as d:
-            #     BuildingPrimaryConsumption.batch(d).create(
-            #         registration_number=item['Registration number'],
-            #         primary_energy_rating=item['Primary energy label'],
-            #         primary_energy_rating_encoded=item['Primary energy label encoded'],
-            #         primary_energy_ratio=item['primary consumption ratio'],
-            #         primary_energy_ratio_scaled=item['primary consumption ratio_scaled'],
-            #     )
-            # with BatchQuery() as e:
-            #     BuildingHeatingDemand.batch(e).create(
-            #         registration_number=item['Registration number'],
-            #         heating_demand_rating=item['Heating demand rating'],
-            #         heating_demand_rating_encoded=item['Heating demand rating encoded'],
-            #         heating_demand_ratio=item['Heating demand ratio'],
-            #         heating_demand_ratio_scaled=item['Heating demand ratio_scaled'],
-            #     )
-            # with BatchQuery() as f:
-            #     BuildingCoolingDemand.batch(f).create(
-            #         registration_number=item['Registration number'],
-            #         cooling_demand_rating=item['Cooling demand ratio.1'],
-            #         cooling_demand_rating_encoded=item['Cooling demand ratio.1 encoded'],
-            #         cooling_demand_ratio=item['Cooling demand ratio'],
-            #         cooling_demand_ratio_scaled=item['Cooling demand ratio_scaled']
-            #     )
-        num_of_partitions += 1
+    unique_years = list(building_df['registration_year'].unique())
+    for year in unique_years:
+        current_year_data = building_df.loc[building_df['registration_year'] == year]
+        mongo_client.insert_many_(df=current_year_data, collection=collection_)

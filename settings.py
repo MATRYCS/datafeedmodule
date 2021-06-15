@@ -5,6 +5,18 @@ PROJECT_FOLDER = '/opt/airflow'
 KEY_SPACE = "matrycs_transformed"
 CONNECTION_NAME = "matrycs_connection"
 
+MONGODB_HOSTNAME = os.environ.get('MONGODB_HOST', 'matrycs.epu.ntua.gr')
+MONGO_PORT = os.environ.get('MONGO_PORT', 27017)
+MONGO_PASS = os.environ.get('MONGO_INITDB_ROOT_PASSWORD', 'admin')
+MONGO_USER = os.environ.get('MONGO_INITDB_ROOT_USERNAME', 'admin')
+DATABASE_NAME = os.environ.get('DATABASE', 'matrycs_transformed')
+MONGO_URI = 'mongodb://{}:{}@{}:{}/'.format(
+    MONGO_USER,
+    MONGO_PASS,
+    MONGODB_HOSTNAME,
+    MONGO_PORT
+)
+
 # EREN DATASET SPECIFICS
 ENERGY_EFFICIENCY_CERTS_PATH = os.path.join(PROJECT_FOLDER, 'data/EREN/certificados-de-eficiencia-energetica.csv')
 

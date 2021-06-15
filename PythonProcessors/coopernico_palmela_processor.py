@@ -3,6 +3,7 @@ from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 
+from MongoDBClient.client import MongoDBClient
 from models.Coopernico.models import PalmelaHourlyProduction
 from utils import read_palmela_hourly_production, delete_unused_xcoms, split_to_partitions, init_scylla_conn
 
@@ -79,25 +80,6 @@ def store_palmela_hourly_data(**kwargs):
     )
     delete_unused_xcoms(task_id='scale_numerical_variables', key='palmela_hourly_production')
 
-    partitioned_palmela_data = split_to_partitions(palmela_hourly_production, 100)
-    init_scylla_conn()
-    sync_table(PalmelaHourlyProduction)
-
-    # Upload Batch data to ScyllaDB
-    num_of_partitions = 0
-    for partition in partitioned_palmela_data:
-        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 100))
-        with BatchQuery() as b:
-            for index, item in partition.iterrows():
-                PalmelaHourlyProduction.batch(b).create(
-                    Timestamp=item['Date'],
-                    Year=item['Year'],
-                    Month=item['Month'],
-                    Day=item['Day'],
-                    Hour=item['Hour'],
-                    Produced=item['Produced'],
-                    Produced_scaled=item['Produced_scaled'],
-                    Specific=item['Specific'],
-                    AvoidedCO2=item['Avoided CO2']
-                )
-        num_of_partitions += 1
+    mongo_client = MongoDBClient()
+    collection_ = mongo_client.create_collection('palmela_hourly_production')
+    mongo_client.insert_many_(df = palmela_hourly_production, collection=collection_)

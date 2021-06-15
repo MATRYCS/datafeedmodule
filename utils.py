@@ -128,6 +128,7 @@ def load_energy_certificates():
 
     """
     energy_cert_data = pd.read_csv(
+        # "C:/Users/pkapsalis.EPU/PycharmProjects/DataFeed/data/EREN/certificados-de-eficiencia-energetica.csv",
         ENERGY_EFFICIENCY_CERTS_PATH,
         sep=';',
         dtype={'primary consumption ratio': 'float',

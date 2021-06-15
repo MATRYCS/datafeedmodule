@@ -3,6 +3,7 @@ from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 
+from MongoDBClient.client import MongoDBClient
 from models.BTC.models import BtcTower
 from settings import BTC_TOWER_DATASET
 from utils import delete_unused_xcoms, split_to_partitions, init_scylla_conn
@@ -76,29 +77,6 @@ def insert_btc_data(**kwargs):
         task_ids='scale_numerical_vars')
     )
     delete_unused_xcoms(task_id='scale_numerical_vars', key='btc_tower_df')
-
-    partitioned_btc_data = split_to_partitions(btc_tower_df, 1000)
-    init_scylla_conn()
-    sync_table(BtcTower)
-
-    # Upload Batch data to ScyllaDB
-    num_of_partitions = 0
-    for partition in partitioned_btc_data:
-        print("Loading {}/{} partition to ScyllaDB".format(num_of_partitions, 1000))
-        with BatchQuery() as b:
-            for index, item in partition.iterrows():
-                BtcTower.batch(b).create(
-                    btc_id="btc_tower",
-                    Timestamp=item['TIMESTAMP'],
-                    Year=item['Year'],
-                    Month=item['Month'],
-                    Day=item['Day'],
-                    Hour=item['Hour'],
-                    Location=item['LOCATION'],
-                    energy_source=item['ENERGY_SOURCE'],
-                    interval=item['INTERVAL'],
-                    value=item['VALUE'],
-                    unit_of_measure=item['UNIT_OF_MEASURE'],
-                    measure=item['MEASURE']
-                )
-        num_of_partitions += 1
+    mongo_client = MongoDBClient()
+    collection_ = mongo_client.create_collection('btc_tower')
+    mongo_client.insert_many_(df=btc_tower_df, collection=collection_)

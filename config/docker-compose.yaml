@@ -49,6 +49,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../MongoDBClient:/opt/airflow/MongoDBClient
       - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
       - ../data:/opt/airflow/data
       - ../settings.py:/opt/airflow/settings.py
@@ -100,6 +101,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../MongoDBClient:/opt/airflow/MongoDBClient
       - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
       - ../data:/opt/airflow/data
       - ../settings.py:/opt/airflow/settings.py
@@ -125,6 +127,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
+      - ../MongoDBClient:/opt/airflow/MongoDBClient
       - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
       - ../data:/opt/airflow/data
       - ../settings.py:/opt/airflow/settings.py
@@ -146,6 +149,7 @@ services:
       - ../PythonProcessors:/opt/airflow/PythonProcessors
       - ../utils.py:/opt/airflow/utils.py
       - ../ScyllaDBClient:/opt/airflow/ScyllaDBClient
+      - ../MongoDBClient:/opt/airflow/MongoDBClient
       - ../data:/opt/airflow/data
       - ../settings.py:/opt/airflow/settings.py
       - ../models:/opt/airflow/models
