@@ -62,7 +62,8 @@ def scale_numerical_vars(**kwargs):
         key='btc_tower_df',
         task_ids='handle_dates')
     )
-    btc_tower_df['VALUE'] = scaler.fit_transform(btc_tower_df[['VALUE']])
+    btc_tower_df['VALUE_scaled'] = scaler.fit_transform(btc_tower_df[['VALUE']])
+    btc_tower_df = btc_tower_df.drop_duplicates(subset=['TIMESTAMP'])
     delete_unused_xcoms(task_id='handle_dates', key='btc_tower_df')
 
     ti.xcom_push(key='btc_tower_df', value=btc_tower_df.to_dict())

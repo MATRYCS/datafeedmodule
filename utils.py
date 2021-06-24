@@ -155,12 +155,12 @@ def fill_na_energy_certificates(certificates_df):
     return certificates_df
 
 
-def read_palmela_hourly_production():
+def read_palmela_hourly_production(file_path):
     """
     This function is used for loading Coopernico's Palmela Hourly Production
     :return: pd.DataFrame
     """
-    palmela_hourly_df = pd.read_csv(PALMELA_HOURLY_PRODUCTION, parse_dates=['Data'])
+    palmela_hourly_df = pd.read_csv(file_path, parse_dates=['Data'])
     return palmela_hourly_df
 
 
