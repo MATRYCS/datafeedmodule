@@ -1,11 +1,7 @@
 import pandas as pd
-from cassandra.cqlengine.management import sync_table
-from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 
-from MongoDBClient.client import MongoDBClient
-from models.Coopernico.models import PalmelaHourlyProduction
-from settings import PALMELA_HOURLY_PRODUCTION
+from MongoDBClient.collection_handler import CollectionHandler
 from utils import read_palmela_hourly_production, delete_unused_xcoms, split_to_partitions, init_scylla_conn
 
 
@@ -16,6 +12,18 @@ def handle_dates(row):
     :return:
     """
     return row.year, row.month, row.day, row.hour
+
+
+def check_if_file_is_processed(**kwargs):
+    ti = kwargs['ti']
+    file = kwargs['file']
+    index = kwargs['index']
+    collection_handler = CollectionHandler()
+    status = collection_handler.append_processed_files(file_name=file)
+    if status:
+        return 'handle_null_values_{}'.format(index)
+    else:
+        return 'abort_{}'.format(index)
 
 
 def handle_null_values(**kwargs):
@@ -96,6 +104,6 @@ def store_palmela_hourly_data(**kwargs):
     })
     delete_unused_xcoms(task_id=previous_task, key='palmela_hourly_production')
 
-    mongo_client = MongoDBClient()
-    collection_ = mongo_client.create_collection('coopernico_solar_plants')
-    mongo_client.insert_many_(df=palmela_hourly_production, collection=collection_)
+    # mongo_client = MongoDBClient()
+    # collection_ = mongo_client.create_collection('coopernico_solar_plants')
+    # mongo_client.insert_many_(df=palmela_hourly_production, collection=collection_)

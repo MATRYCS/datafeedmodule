@@ -80,16 +80,6 @@ with DAG('eren_cons_centers',
         python_callable=scale_diesel_consumption_vars
     )
 
-    # management_center_sensor = CassandraTableSensor(
-    #     task_id='management_center_sensor',
-    #     cassandra_conn_id='matrycs_scylladb_conn',
-    #     table='matrycs.management_center'
-    # )
-    # spending_center_sensor = CassandraTableSensor(
-    #     task_id='spending_center_sensor',
-    #     cassandra_conn_id='matrycs_scylladb_conn',
-    #     table='matrycs.spending_center'
-    # )
 
     consumer_center_sensor >> encode_consumer_center_type_op >> scale_numerical_vars_cons_centers_op
     monthly_electricity_consumption_sensor >> encode_electricity_consumption_op >> scale_electricity_numerical_vars_op

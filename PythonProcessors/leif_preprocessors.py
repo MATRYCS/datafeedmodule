@@ -1,13 +1,8 @@
-from cassandra.cqlengine.management import sync_table
-from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 
 from MongoDBClient.client import MongoDBClient
-from models.LEIF.models import LeifProject, LeifActivity, LeifBuilding, LeifBeforeProjectAvg, ReportingYearData, \
-    TotalAfterProject
-from utils import load_leif_data, delete_unused_xcoms, load_leif_data_spec, process_leif_data, split_to_partitions, \
-    init_scylla_conn
+from utils import load_leif_data, delete_unused_xcoms, load_leif_data_spec, process_leif_data
 
 
 def handle_dates(row):

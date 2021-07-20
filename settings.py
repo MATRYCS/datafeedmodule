@@ -4,6 +4,7 @@ import os
 PROJECT_FOLDER = '/opt/airflow'
 KEY_SPACE = "matrycs_transformed"
 CONNECTION_NAME = "matrycs_connection"
+PROCESSED_FILES_COLLECTION = "files_processed"
 
 MONGODB_HOSTNAME = os.environ.get('MONGODB_HOST', 'matrycs.epu.ntua.gr')
 MONGO_PORT = os.environ.get('MONGO_PORT', 27017)

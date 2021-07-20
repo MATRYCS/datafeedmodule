@@ -4,7 +4,6 @@ from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.apache.cassandra.sensors.table import CassandraTableSensor
 from airflow.sensors.filesystem import FileSensor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))

@@ -4,8 +4,7 @@ from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler
 
 from MongoDBClient.client import MongoDBClient
-from utils import delete_unused_xcoms, encoding_labels, scale_ratio, alter_scylladb_tables, split_to_partitions, \
-    load_energy_certificates, fill_na_energy_certificates, init_scylla_conn
+from utils import delete_unused_xcoms, scale_ratio, load_energy_certificates, fill_na_energy_certificates
 
 
 def handle_dates(**kwargs):

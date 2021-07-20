@@ -1,12 +1,9 @@
 import pandas as pd
-from cassandra.cqlengine.management import sync_table
-from cassandra.cqlengine.query import BatchQuery
 from sklearn.preprocessing import MinMaxScaler
 
 from MongoDBClient.client import MongoDBClient
-from models.BTC.models import BtcTower
 from settings import BTC_TOWER_DATASET
-from utils import delete_unused_xcoms, split_to_partitions, init_scylla_conn
+from utils import delete_unused_xcoms
 
 
 def handle_dates(row):

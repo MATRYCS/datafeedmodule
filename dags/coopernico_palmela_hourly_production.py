@@ -3,19 +3,18 @@ import sys
 from datetime import datetime
 
 from airflow import DAG
-from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator, BranchPythonOperator
-from airflow.operators.subdag import SubDagOperator
 from airflow.sensors.filesystem import FileSensor
-from airflow.utils.task_group import TaskGroup
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from settings import PALMELA_HOURLY_PRODUCTION
+from MongoDBClient.collection_handler import CollectionHandler
+
 
 from PythonProcessors.coopernico_palmela_processor import handle_null_values, scale_numerical_vars, \
-    store_palmela_hourly_data
+    store_palmela_hourly_data, check_if_file_is_processed
 
 default_args = {
     'start_date': datetime(2021, 3, 29)
@@ -61,9 +60,23 @@ with DAG('coopernico_palmela_hourly_production',
     )
 
     files = os.listdir(PALMELA_HOURLY_PRODUCTION)
+
     for index in range(len(files)):
         current_file = files[index]
         solar_plant_name = current_file.split('-')[0]
+
+        if_already_processed_file = BranchPythonOperator(
+            task_id='if_is_processed_{}'.format(index),
+            python_callable=check_if_file_is_processed,
+            op_kwargs={
+                'file': current_file,
+                'index': index
+            }
+        )
+
+        abort_file_op = DummyOperator(
+            task_id='abort_{}'.format(index)
+        )
 
         handle_null_values_op = PythonOperator(
             task_id='handle_null_values_{}'.format(index),
@@ -83,9 +96,8 @@ with DAG('coopernico_palmela_hourly_production',
             op_kwargs={'previous_task': 'scale_numerical_variables_{}'.format(index)},
             python_callable=store_palmela_hourly_data
         )
-
-        process >> handle_null_values_op >> scale_numerical_variables_op >> store_data_op
-
+        process >> if_already_processed_file >> abort_file_op
+        process >> if_already_processed_file >> handle_null_values_op >> scale_numerical_variables_op >> store_data_op
 
     palmela_hourly_production_sensor_op >> decide_to_process
     decide_to_process >> stop_execution
