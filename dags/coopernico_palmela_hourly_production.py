@@ -10,7 +10,6 @@ from airflow.sensors.filesystem import FileSensor
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from settings import PALMELA_HOURLY_PRODUCTION
-from MongoDBClient.collection_handler import CollectionHandler
 
 
 from PythonProcessors.coopernico_palmela_processor import handle_null_values, scale_numerical_vars, \
@@ -83,7 +82,8 @@ with DAG('coopernico_palmela_hourly_production',
             python_callable=handle_null_values,
             op_kwargs={
                 'file': os.path.join(PALMELA_HOURLY_PRODUCTION, current_file),
-                'solar_plant': solar_plant_name
+                'solar_plant': solar_plant_name,
+                'previous_task': 'if_is_processed_{}'.format(index)
             }
         )
         scale_numerical_variables_op = PythonOperator(

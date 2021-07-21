@@ -33,6 +33,38 @@ def delete_unused_xcoms(task_id, key):
     cur.close()
 
 
+def delete_previous_xcoms(task_id):
+    conn = psycopg2.connect(
+        "dbname={dbname} user={user} password={password} host={host} port={port}".format(
+            dbname='airflow',
+            user='airflow',
+            password='airflow',
+            host='postgres',
+            port=5432
+        )
+    )
+    cur = conn.cursor()
+    cur.execute("DELETE FROM XCOM WHERE task_id='{}'".format(task_id))
+    conn.commit()
+    cur.close()
+
+
+def remove_xcoms_after_run(task_ids):
+    conn = psycopg2.connect(
+        "dbname={dbname} user={user} password={password} host={host} port={port}".format(
+            dbname='airflow',
+            user='airflow',
+            password='airflow',
+            host='postgres',
+            port=5432
+        )
+    )
+    cur = conn.cursor()
+    cur.execute("DELETE FROM XCOM WHERE task_id in {}".format(tuple(task_ids)))
+    conn.commit()
+    cur.close()
+
+
 def categorical_encoding(**kwargs):
     """This function is used for label encoding"""
     df = kwargs['df']
