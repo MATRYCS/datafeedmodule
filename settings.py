@@ -17,6 +17,9 @@ MONGO_URI = 'mongodb://{}:{}@{}:{}/'.format(
     MONGODB_HOSTNAME,
     MONGO_PORT
 )
+# VEOLIA DATASET SPECIFICS
+excel_file_path = os.path.join(PROJECT_FOLDER, 'data/VEOLIA/VEOLIA_Data_Dec20.xlsx')
+sheet_names_15 = ['4154', '4071', '4064', '4037', '16930', '4070', '4063', '4036']
 
 # EREN DATASET SPECIFICS
 ENERGY_EFFICIENCY_CERTS_PATH = os.path.join(PROJECT_FOLDER, 'data/EREN/certificados-de-eficiencia-energetica.csv')
