@@ -18,6 +18,7 @@ MONGO_URI = 'mongodb://{}:{}@{}:{}/'.format(
     MONGO_PORT
 )
 # VEOLIA DATASET SPECIFICS
+VEOLIA_FILE_PATH = os.path.join(PROJECT_FOLDER, 'data/VEOLIA')
 excel_file_path = os.path.join(PROJECT_FOLDER, 'data/VEOLIA/VEOLIA_Data_Dec20.xlsx')
 sheet_names_15 = ['4154', '4071', '4064', '4037', '16930', '4070', '4063', '4036']
 
