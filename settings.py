@@ -8,10 +8,10 @@ PROCESSED_FILES_COLLECTION = "files_processed"
 
 MONGODB_HOSTNAME = os.environ.get('MONGODB_HOST', 'matrycs.epu.ntua.gr')
 MONGO_PORT = os.environ.get('MONGO_PORT', 27017)
-MONGO_PASS = os.environ.get('MONGO_INITDB_ROOT_PASSWORD', 'admin')
-MONGO_USER = os.environ.get('MONGO_INITDB_ROOT_USERNAME', 'admin')
+MONGO_PASS = os.environ.get('MONGO_INITDB_ROOT_PASSWORD', 'admin_matrycs_pass')
+MONGO_USER = os.environ.get('MONGO_INITDB_ROOT_USERNAME', 'admin_matrycs_mongo')
 DATABASE_NAME = os.environ.get('DATABASE', 'matrycs_transformed')
-MONGO_URI = 'mongodb://{}:{}@{}:{}/'.format(
+MONGO_URI = 'mongodb://{}:{}@{}:{}/admin?authSource=admin'.format(
     MONGO_USER,
     MONGO_PASS,
     MONGODB_HOSTNAME,

@@ -7,6 +7,7 @@ class MongoDBClient(object):
     def __init__(self):
         self.__conn = pymongo.MongoClient(MONGO_URI)
         self.db = self.__conn[DATABASE_NAME]
+        print(MONGO_URI)
 
     def get_collections_(self):
         collection_names_ = self.db.list_collection_names()
